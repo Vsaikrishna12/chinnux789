@@ -119,11 +119,14 @@ jobs:
           sleep 10
           kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/chinnux789
 
-      - name: Send Telegram notification (optional)
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' }}
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d text="🚀 Chinnu Bot Started on Kaggle!%0A⏱️ Auto-stop in 11 hours" \
-            -d parse_mode="HTML" || true
+      - name: Send Telegram notification
         continue-on-error: true
+        run: |
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d text="🚀 Chinnu Bot Started on Kaggle!%0A⏱️ Auto-stop in 11 hours" \
+              -d parse_mode="HTML"
+          else
+            echo "Telegram secrets not configured, skipping notification"
+          fi
