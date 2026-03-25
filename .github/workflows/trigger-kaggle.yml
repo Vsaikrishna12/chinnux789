@@ -1,0 +1,129 @@
+name: Trigger Kaggle Notebook
+
+on:
+  workflow_dispatch:
+    inputs:
+      trigger_source:
+        description: 'Trigger source'
+        required: false
+        default: 'manual'
+
+jobs:
+  trigger-kaggle:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Kaggle CLI
+        run: pip install kaggle
+
+      - name: Setup Kaggle credentials
+        run: |
+          mkdir -p ~/.kaggle
+          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Pull existing notebook from Kaggle
+        run: |
+          kaggle kernels pull ${{ secrets.KAGGLE_USERNAME }}/chinnux789 -p ./notebook
+        continue-on-error: true
+
+      - name: Create updated notebook
+        run: |
+          mkdir -p notebook
+          cat > notebook/chinnux789.ipynb << 'NOTEBOOKEOF'
+          {
+            "metadata": {
+              "kernelspec": {
+                "language": "python",
+                "display_name": "Python 3",
+                "name": "python3"
+              },
+              "language_info": {
+                "name": "python",
+                "version": "3.10.12"
+              }
+            },
+            "nbformat_minor": 4,
+            "nbformat": 4,
+            "cells": [
+              {
+                "cell_type": "code",
+                "source": "# ============================================\n# CHINNU BOT RUNNER - AUTO TRIGGERED\n# ============================================\n\nimport os\nimport sys\nimport time\nimport threading\nimport subprocess\nfrom datetime import datetime, timedelta\nfrom IPython.display import display, HTML\nimport warnings\nwarnings.filterwarnings('ignore')\n\n# Configuration\nDRIVE_FILE_ID = \"${{ secrets.DRIVE_FILE_ID }}\"\nBOT_FILENAME = \"chinnu_bot.py\"\nMAX_RUNTIME_HOURS = 11\nHEARTBEAT_INTERVAL = 30\n\nprint('=' * 60)\nprint('CHINNU BOT RUNNER - STARTED')\nprint('=' * 60)\nprint(f'Start Time: {datetime.now()}')\nprint(f'Max Runtime: {MAX_RUNTIME_HOURS} hours')\nprint('=' * 60)",
+                "metadata": {"trusted": true},
+                "outputs": [],
+                "execution_count": null
+              },
+              {
+                "cell_type": "code",
+                "source": "# Anti-Sleep System\nclass AntiSleepSystem:\n    def __init__(self):\n        self.start_time = datetime.now()\n        self.max_runtime = timedelta(hours=MAX_RUNTIME_HOURS)\n        self.is_running = True\n        self.heartbeat_count = 0\n\n    def inject_js(self):\n        js = '''<script>\n        (function(){\n            Object.defineProperty(document,'hidden',{get:()=>false});\n            Object.defineProperty(document,'visibilityState',{get:()=>'visible'});\n            document.addEventListener('visibilitychange',e=>{e.stopImmediatePropagation();},true);\n            setInterval(()=>{\n                document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:Math.random()*window.innerWidth,clientY:Math.random()*window.innerHeight}));\n                window.scrollBy(0,1);window.scrollBy(0,-1);\n                window.focus();\n                console.log('Heartbeat:'+new Date().toLocaleTimeString());\n            },30000);\n            setInterval(()=>{if(typeof Jupyter!=='undefined'&&Jupyter.notebook&&Jupyter.notebook.kernel){Jupyter.notebook.kernel.execute('pass');}},60000);\n        })();\n        </script>'''\n        display(HTML(js))\n        print('Anti-sleep JS injected')\n\n    def should_stop(self):\n        return datetime.now() - self.start_time >= self.max_runtime\n\n    def get_remaining(self):\n        r = self.max_runtime - (datetime.now() - self.start_time)\n        return max(r, timedelta(0))\n\n    def format_td(self, td):\n        s = int(td.total_seconds())\n        h, r = divmod(s, 3600)\n        m, sec = divmod(r, 60)\n        return f'{h:02d}:{m:02d}:{sec:02d}'\n\n    def heartbeat_loop(self):\n        while self.is_running and not self.should_stop():\n            self.heartbeat_count += 1\n            _ = [i**2 for i in range(1000)]\n            if self.heartbeat_count % 10 == 0:\n                print(f'Heartbeat {self.heartbeat_count} | Remaining: {self.format_td(self.get_remaining())}')\n            time.sleep(HEARTBEAT_INTERVAL)\n        if self.should_stop():\n            print('11 HOUR LIMIT - AUTO STOPPING')\n            self.stop()\n\n    def start(self):\n        self.inject_js()\n        t = threading.Thread(target=self.heartbeat_loop, daemon=True)\n        t.start()\n        print('Anti-sleep system ACTIVE')\n\n    def stop(self):\n        self.is_running = False\n        print(f'Stopped. Heartbeats: {self.heartbeat_count}')\n\nanti_sleep = AntiSleepSystem()\nanti_sleep.start()",
+                "metadata": {"trusted": true},
+                "outputs": [],
+                "execution_count": null
+              },
+              {
+                "cell_type": "code",
+                "source": "# Download from Google Drive\ndef download_bot():\n    print('Downloading bot from Google Drive...')\n    try:\n        subprocess.run([sys.executable, '-m', 'pip', 'install', 'gdown', '-q'], check=True)\n        import gdown\n        gdown.download(id=DRIVE_FILE_ID, output=BOT_FILENAME, quiet=False)\n        if os.path.exists(BOT_FILENAME):\n            print(f'Downloaded: {BOT_FILENAME} ({os.path.getsize(BOT_FILENAME)} bytes)')\n            return True\n    except Exception as e:\n        print(f'Download error: {e}')\n    return False\n\ndownload_bot()",
+                "metadata": {"trusted": true},
+                "outputs": [],
+                "execution_count": null
+              },
+              {
+                "cell_type": "code",
+                "source": "# Install dependencies\nprint('Installing dependencies...')\nfor pkg in ['python-telegram-bot==20.7', 'requests', 'aiohttp']:\n    subprocess.run([sys.executable, '-m', 'pip', 'install', pkg, '-q'])\nprint('Dependencies installed')",
+                "metadata": {"trusted": true},
+                "outputs": [],
+                "execution_count": null
+              },
+              {
+                "cell_type": "code",
+                "source": "# Run the bot\nimport queue\n\nclass BotRunner:\n    def __init__(self):\n        self.process = None\n        self.output_queue = queue.Queue()\n        self.is_running = False\n\n    def stream_output(self, pipe):\n        for line in iter(pipe.readline, b''):\n            if line:\n                self.output_queue.put(line.decode('utf-8', errors='replace'))\n        pipe.close()\n\n    def run(self):\n        if not os.path.exists(BOT_FILENAME):\n            print(f'Bot file not found: {BOT_FILENAME}')\n            return\n        \n        print(f'Starting {BOT_FILENAME}...')\n        self.process = subprocess.Popen(\n            [sys.executable, '-u', BOT_FILENAME],\n            stdout=subprocess.PIPE,\n            stderr=subprocess.STDOUT,\n            bufsize=0\n        )\n        self.is_running = True\n        print(f'Bot started (PID: {self.process.pid})')\n        print('-' * 40)\n        \n        t = threading.Thread(target=self.stream_output, args=(self.process.stdout,), daemon=True)\n        t.start()\n        \n        while self.is_running:\n            if anti_sleep.should_stop():\n                print('AUTO-DISCONNECT: 11 hours reached')\n                self.stop()\n                break\n            if self.process.poll() is not None:\n                print(f'Bot ended (code: {self.process.returncode})')\n                break\n            try:\n                while True:\n                    line = self.output_queue.get_nowait()\n                    print(line, end='', flush=True)\n            except queue.Empty:\n                pass\n            time.sleep(0.1)\n        \n        self.stop()\n\n    def stop(self):\n        self.is_running = False\n        if self.process:\n            self.process.terminate()\n            try:\n                self.process.wait(timeout=5)\n            except:\n                self.process.kill()\n        anti_sleep.stop()\n        print('Bot stopped')\n        print(f'Total runtime: {anti_sleep.format_td(datetime.now() - anti_sleep.start_time)}')\n\nrunner = BotRunner()\nrunner.run()",
+                "metadata": {"trusted": true},
+                "outputs": [],
+                "execution_count": null
+              }
+            ]
+          }
+          NOTEBOOKEOF
+
+      - name: Create kernel metadata
+        run: |
+          cat > notebook/kernel-metadata.json << EOF
+          {
+            "id": "${{ secrets.KAGGLE_USERNAME }}/chinnux789",
+            "title": "chinnux789",
+            "code_file": "chinnux789.ipynb",
+            "language": "python",
+            "kernel_type": "notebook",
+            "is_private": true,
+            "enable_gpu": false,
+            "enable_internet": true,
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": []
+          }
+          EOF
+
+      - name: Push and run notebook on Kaggle
+        run: |
+          cd notebook
+          kaggle kernels push -p .
+          echo "Notebook pushed to Kaggle!"
+          sleep 10
+          kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/chinnux789
+
+      - name: Send Telegram notification (optional)
+        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="🚀 Chinnu Bot Started on Kaggle!%0A⏱️ Auto-stop in 11 hours" \
+            -d parse_mode="HTML" || true
+        continue-on-error: true
